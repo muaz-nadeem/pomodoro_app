@@ -11,4 +11,4 @@ backend/.env
 .DS_Store
 
 #firebase keys
-firebase_key.json
+backend/firebase_key.json
