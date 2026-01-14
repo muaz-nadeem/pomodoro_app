@@ -9,3 +9,6 @@ backend/.env
 
 # OS
 .DS_Store
+
+#firebase keys
+firebase_key.json

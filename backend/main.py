@@ -2,10 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import uuid
-
 from models import Session
-from storage import sessions
-
+from firebase import db
 
 app = FastAPI()
 
@@ -29,41 +27,47 @@ def ping():
 
 @app.post("/sessions/start")
 def start_session(task: str, duration: int):
-    session = Session(
-        user_id="anonymous",
-        task=task,
-        duration=duration,
-        started_at=datetime.utcnow(),
-        ended_at=datetime.utcnow(),  # temporary
-    )
-
     session_id = str(uuid.uuid4())
 
-    sessions.append({
-        "id": session_id,
-        "session": session
-    })
+    session_data = {
+        "user_id": "anonymous",
+        "task": task,
+        "duration": duration,
+        "started_at": datetime.utcnow(),
+        "ended_at": None
+    }
+
+    db.collection("sessions").document(session_id).set(session_data)
 
     return {
         "message": "Session started",
         "session_id": session_id,
-        "session": session
+        "session": session_data
     }
 
 
 @app.put("/sessions/end/{session_id}")
 def end_session(session_id: str):
-    for item in sessions:
-        if item["id"] == session_id:
-            item["session"].ended_at = datetime.utcnow()
-            return {
-                "message": "Session ended",
-                "session": item["session"]
-            }
+    session_ref = db.collection("sessions").document(session_id)
+    session_ref.update({
+        "ended_at": datetime.utcnow()
+    })
 
-    return {"error": "Session not found"}
+    return {
+        "message": "Session ended",
+        "session_id": session_id
+    }
 
 
 @app.get("/sessions")
 def get_sessions():
+    sessions = []
+    docs = db.collection("sessions").stream()
+
+    for doc in docs:
+        data = doc.to_dict()
+        data["id"] = doc.id
+        sessions.append(data)
+
     return sessions
+
